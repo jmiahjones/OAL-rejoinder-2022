@@ -7,7 +7,7 @@ library(dplyr)
 simulate_oal <- function(
   n, p, num_simulations=100L, 
   rho, sig_x, scenario, use_ridge=F,
-  verbose=2
+  verbose=1
 ) {
   
   lambda2_vals <- if(use_ridge){
@@ -88,7 +88,7 @@ simulate_oal <- function(
     if(!is.null(lambda1)){
       stopifnot(length(lambda1) == 1)
     }
-    if(lambda2 == 0){
+    if(lambda2 == 0) {
       X1 = X
       A1 = A
     } else {
@@ -105,6 +105,7 @@ simulate_oal <- function(
     
     if(is.null(lambda1)){
       coefs_all <- coef(logit_oal)
+      coefs_all <- (1 + lambda2) * coefs_all
       # propensity and coefficient matrix: n x nlambda
       est_propens = predict(logit_oal, type="response", newx=X)
       
@@ -119,27 +120,29 @@ simulate_oal <- function(
       
       this_min_idx = which.min(this_wAMD_vec)
       wAMD = this_wAMD_vec[this_min_idx]
-      min_wgts = wgt_mat[,this_min_idx]
+      min_wgts = wgt_mat[, this_min_idx]
       
       min_coefs <- coefs_all[,this_min_idx]
       min_ate = ATE_est(fY=Y,fw=min_wgts,fA=A)
     } else {
-      
-      coefs_all <- coef(logit_oal, s=mean(pen)*lambda1)
+      d <- dim(X)
+      lam2_adj <- ifelse(lambda2 == 0, 1, d[1] / sum(d))
+      coefs_all <- coef(logit_oal, s = mean(pen) / lam2_adj * lambda1)
+      coefs_all <- (1 + lambda2) * coefs_all
       est_propens = predict(logit_oal, type="response", newx=X, s=mean(pen)*lambda1)
       
-      wgt <- create_weights(est_propens, fA=Data$A)
+      wgt <- create_weights(est_propens, fA = Data$A)
       
       # estimate weighted absolute mean different over all covariates using this lambda to generate weights
-      wAMD = wAMD_function(X=X, A=A,
-                           wgt=wgt, beta=betaXY)$wAMD
+      wAMD = wAMD_function(X = X, A = A,
+                           wgt = wgt, beta = betaXY)$wAMD
       
       min_coefs <- as.numeric(coefs_all)
-      min_ate = ATE_est(fY=Y,fw=wgt,fA=A)
+      min_ate = ATE_est(fY = Y,fw = wgt,fA = A)
       
     }
     
-    ret <- list(ate=min_ate, wAMD=wAMD, coefs=min_coefs)
+    ret <- list(ate = min_ate, wAMD = wAMD, coefs = min_coefs)
     return(ret)
   }
   
@@ -199,8 +202,14 @@ simulate_oal <- function(
         gamma = gamma_vals[gam_idx]
         lambda1 = n^(lambda_vec[gam_idx])
         
-        this_oal <- oal_fitting(X, Data$A, Data$Y, betaXY, gamma, 
-                                lambda1=lambda1*n, lambda2=lambda2)
+        this_oal <- try(
+          oal_fitting(X, Data$A, Data$Y, betaXY, gamma, 
+                                lambda1=lambda1*n, lambda2=lambda2),
+          silent=T
+        )
+        
+        if(inherits(this_oal, "try-error"))
+          next
         
         if(is.null(this_oal))
           next
@@ -238,7 +247,8 @@ simulate_oal <- function(
     metrics=list(tibble(wamd=wamds, ate=ates)),
     sel_perf=list(tibble(
       sel_idx=1:p,
-      prop_sel=colMeans(is_selected)[-1]
+      prop_sel=colMeans(is_selected)[-1],
+      coefs=coefs[,-1]
     ))
   )
   

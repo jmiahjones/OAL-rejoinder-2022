@@ -43,3 +43,7 @@ docs/
 
 # translation temp files
 po/*~
+
+# my log files
+/logs/*
+/plots/*

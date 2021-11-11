@@ -27,13 +27,36 @@ plots %>%
   select(n:method, ate_bias, wamd_med) %>% View
 # d_plots$plot
 
+png("./plots/bias-by-pos.png")
 plots %>% 
   # filter(rho==0.75) %>% View
   mutate(np=factor(sprintf("%i/%i", n, p)),
          rho=factor(rho)) %>% 
   ggplot(aes(x=positivity_tol, y=ate_bias, color=np)) + 
   geom_point(aes(shape=rho), size=3, alpha=0.7) + #scale_shape(solid=F) +
-  facet_grid(method~.)
+  facet_grid(method~.) + 
+  labs(
+    title = "ATE Bias vs. Positiviy Violations",
+    y = "ATE Bias",
+    x = expression(paste("Min of ", pi, " and ", 1 - pi))
+  )
+dev.off()
+
+png("./plots/pos-by-sd.png")
+plots %>% 
+  # filter(rho==0.75) %>% View
+  mutate(np=factor(sprintf("%i/%i", n, p)),
+         rho=factor(rho),
+         sig_x=factor(sig_x)) %>% 
+  ggplot(aes(x=sig_x, y=positivity_tol, color=rho)) + 
+  geom_point(aes(shape=rho), size=3, alpha=0.5) + #scale_shape(solid=F) +
+  facet_grid(method~.) + 
+  labs(
+    title = "Positiviy Violations by X Std. Dev.",
+    x = "sd(X)",
+    y = expression(paste("Min of ", pi, " and ", 1 - pi))
+  )
+dev.off()
 
 
 # plot(x=seq.int(p), y=colMeans(is_selected)[-1], type="l", 
