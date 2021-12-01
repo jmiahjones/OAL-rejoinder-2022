@@ -82,6 +82,9 @@ oal_fitting <- function(
     min_coefs <- coefs_all[, this_min_idx]
     min_ate <- ATE_est(Y = Y, wgt = min_wgts, A = A)
   } else {
+    # NOTE: lambda1 is on a different scale than the likelihood function
+    #       ln in glmnet. Because we added artificial samples, we need
+    #       to correct for this by making sure we multiply by (n+p)/n.
     d <- dim(X)
     lam2_adj <- ifelse(lambda2 == 0, 1, d[1] / sum(d))
     s <- mean(pen) / lam2_adj * lambda1

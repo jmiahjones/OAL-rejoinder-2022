@@ -23,7 +23,10 @@ plots <-
     plot=pmap(list(plot, title_str, sub_str, foot_str), ~..1 +
                 labs(title=..2, subtitle=..3,
                      x="Covariate", y="Proportion of Time Selected",
-                     caption=..4) )
+                     caption=..4) +
+                theme_bw() +
+                theme(text = element_text(size = 20))
+    )
   )
 
 
@@ -31,6 +34,29 @@ plots <-
 # plots %>% 
 #   select(n:method, ate_bias:lam2_med) %>% View
 
+png("./plots/replication.png")
+plots %>%
+  filter(sig_x == 1) %>% 
+  mutate(
+    np = factor(sprintf("n/p = %i/%i", n, p)),
+    rho = factor(sprintf("%.2f", rho))
+  ) %>%
+  ggplot(aes(x = rho, y = ate_bias)) +
+  geom_point(aes(shape = method, group = method),
+    size = 3,
+    position = position_dodge(width = 0.5)
+  ) +
+  # geom_line(aes(linetype=method), position="dodge") +
+  # scale_x_continuous(breaks = seq(.2, 1, by = .2)) +
+  facet_grid(cols=vars(np)) +
+  theme_bw() +
+  theme(text = element_text(size = 20)) +
+  labs(
+    title = "ATE Bias vs. \u03c1",
+    y = "ATE Bias",
+    x = "\u03c1", shape = "Method"
+  )
+dev.off()
 
 # png("./plots/bias-by-pos.png")
 # plots %>% 
@@ -89,7 +115,7 @@ dev.off()
 
 png("./plots/positivity_violations.png", width = 700, height = 700)
 plots %>%
-  filter(use_ridge == F) %>%
+  # filter(use_ridge == F) %>%
   mutate(
     np = factor(sprintf("n/p = %i/%i", n, p)),
     # rho = factor(sprintf("\u03c1 = %.2f", rho))
@@ -108,17 +134,20 @@ plots %>%
 dev.off()
 
 
-# png("./plots/tmp.png")
-# plots %>% 
-#   mutate(np=factor(sprintf("n/p = %i/%i", n, p)),
-#          rho=factor(sprintf("\u03c1 = %.2f", rho))) %>% 
-#   ggplot(aes(x=sig_x, y=ate_bias)) + 
-#   # geom_point(aes(shape=method), size=3, alpha=0.7) +
-#   geom_line(aes(linetype=method)) +
-#   facet_grid(rho~np) + 
-#   labs(
-#     title = "ATE Bias vs. sd(X)",
-#     y = "ATE Bias",
-#     x = expression(paste("Min of ", pi, " and ", 1 - pi))
+png("./plots/selection-rho-0.png", width = 700, height = 700)
+plots %>% 
+  filter(
+    abs(sig_x - 0.4) < 1e-3, rho==0.0, n==200
+  ) %>% 
+  filter(!use_ridge) %>% pull(plot)
+dev.off()
+
+
+png("./plots/selection-rho-075.png", width = 700, height = 700)
+plots %>% 
+  filter(
+    abs(sig_x - 0.4) < 1e-3, rho==0.75, n==200
+  ) %>% 
+  filter(!use_ridge) %>% pull(plot)
 #   )
-# dev.off()
+dev.off()

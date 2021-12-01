@@ -33,11 +33,11 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   # Set strength of relationship between covariates and treatment (alpha_v)
   switch(scenario,
     "1" = {
-      beta_v <- c(0.6, 0.6, 0.6, 0.6, 0, 0, rep(0, p - 6)) * 2
+      beta_v <- c(0.6, 0.6, 0.6, 0.6, 0, 0, rep(0, p - 6)) #* 2
       alpha_v <- c(1.0, 1.0, 0, 0, 1, 1, rep(0, p - 6))
     },
     "2" = {
-      beta_v <- c(0.6, 0.6, 0.6, 0.6, 0, 0, rep(0, p - 6)) * 2
+      beta_v <- c(0.6, 0.6, 0.6, 0.6, 0, 0, rep(0, p - 6)) #* 2
       alpha_v <- c(0.4, 0.4, 0, 0, 1, 1, rep(0, p - 6))
     }
   )

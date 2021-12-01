@@ -18,7 +18,6 @@ dln <- function(coefs, x, a, intercept=F) {
         X <- x
     }
     
-    deta <- t(X)
     eta <- as.numeric((X %*% coefs))
     mu <- plogis(eta)
     crossprod(X, (a - mu))
@@ -33,6 +32,10 @@ test_glmnet_fit <- function(
     penalty.factor = pen
   )
   
+  # Note: This demonstrates that the "lambda1" value needs to be
+  # adjusted for the penalization term in order for coefs_all to 
+  # be the minimizer in beta of the objective function:
+  # -ln + lambda1 * sum( pen * abs(beta) )
   coefs_all <- coef(
     logit_oal, s = mean(pen) * lambda1,
     exact = T,
@@ -117,11 +120,4 @@ coefs_all <- test_glmnet_fit(
 )
 stopifnot(max(abs(
 kkt_active(coefs_all, X, A, intercept=F, pen=pen, lambda1=lambda1)
-)) < tol)
-
-pen <- abs(betaXY)^{grid_min$gamma}
-lambda1 <- grid_min$lambda1
-
-stopifnot(max(abs(
-kkt_active(coefs_all, X, A, intercept=T, pen=pen, lambda1=lambda1)
 )) < tol)
