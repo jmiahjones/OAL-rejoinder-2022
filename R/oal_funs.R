@@ -56,58 +56,31 @@ oal_fitting <- function(
   )
   logit_oal <- do.call(glmnet::glmnet, call_list)
 
+  # NOTE: lambda1 is on a different scale than the likelihood function
+  #       ln in glmnet. Because we added artificial samples, we need
+  #       to correct for this by making sure we multiply by (n+p)/n.
+  d <- dim(X)
+  lam2_adj <- ifelse(lambda2 == 0, 1, d[1] / sum(d))
+  s <- mean(pen) / lam2_adj * lambda1
 
+  # concatenate the call_list with the exact argument
+  coef_call_list <- c(list(logit_oal), call_list, list(exact = exact, s = s))
+  coefs_all <- do.call(coef, coef_call_list)
 
-  if (is.null(lambda1)) {
-    coefs_all <- coef(logit_oal)
-    coefs_all <- (1 + lambda2) * coefs_all
-    # propensity and coefficient matrix: n x nlambda
-    est_propens <- predict(logit_oal, type = "response", newx = X)
+  coefs_all <- coef(logit_oal, s = mean(pen) / lam2_adj * lambda1)
+  coefs_all <- (1 + lambda2) * coefs_all
+  est_propens <- predict(logit_oal, type = "response", newx = X, s = mean(pen) * lambda1)
 
+  wgt <- create_trunc_weights(est_propens, A = A, trunc = trunc)
 
-    wgt_mat <- apply(est_propens, 2, create_trunc_weights, A = A, trunc = trunc)
+  # estimate weighted absolute mean different over all covariates using this lambda to generate weights
+  wAMD <- wAMD_function(
+    X = X, A = A,
+    wgt = wgt, beta = betaXY
+  )$wAMD
 
-    # estimate weighted absolute mean different over all covaraites using this lambda to generate weights
-    this_wAMD_vec <- apply(wgt_mat, 2, function(wgt) {
-      wAMD_function(
-        X = X, A = A,
-        wgt = wgt, beta = betaXY
-      )$wAMD
-    })
-
-    this_min_idx <- which.min(this_wAMD_vec)
-    wAMD <- this_wAMD_vec[this_min_idx]
-    min_wgts <- wgt_mat[, this_min_idx]
-
-    min_coefs <- coefs_all[, this_min_idx]
-    min_ate <- ATE_est(Y = Y, wgt = min_wgts, A = A)
-  } else {
-    # NOTE: lambda1 is on a different scale than the likelihood function
-    #       ln in glmnet. Because we added artificial samples, we need
-    #       to correct for this by making sure we multiply by (n+p)/n.
-    d <- dim(X)
-    lam2_adj <- ifelse(lambda2 == 0, 1, d[1] / sum(d))
-    s <- mean(pen) / lam2_adj * lambda1
-
-    # concatenate the call_list with the exact argument
-    coef_call_list <- c(list(logit_oal), call_list, list(exact = exact, s = s))
-    coefs_all <- do.call(coef, coef_call_list)
-
-    coefs_all <- coef(logit_oal, s = mean(pen) / lam2_adj * lambda1)
-    coefs_all <- (1 + lambda2) * coefs_all
-    est_propens <- predict(logit_oal, type = "response", newx = X, s = mean(pen) * lambda1)
-
-    wgt <- create_trunc_weights(est_propens, A = A, trunc = trunc)
-
-    # estimate weighted absolute mean different over all covariates using this lambda to generate weights
-    wAMD <- wAMD_function(
-      X = X, A = A,
-      wgt = wgt, beta = betaXY
-    )$wAMD
-
-    min_coefs <- as.numeric(coefs_all)
-    min_ate <- ATE_est(Y = Y, wgt = wgt, A = A)
-  }
+  min_coefs <- as.numeric(coefs_all)
+  min_ate <- ATE_est(Y = Y, wgt = wgt, A = A)
 
   ret <- list(ate = min_ate, wAMD = wAMD, coefs = min_coefs)
   return(ret)
