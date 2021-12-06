@@ -11,7 +11,9 @@ simulate_oal <- function(n, p, num_simulations = 100L,
                          verbose = 1,
                          pos_viol_cut = .05) {
   lambda2_vals <- if (use_ridge) {
-    c(0, 10^(-2:1))
+    c(0, 
+      10^c(-2,-1.5,-1,-.75,-.5,-.25,0,.25,.5,1)
+    )
   } else {
     0
   }
