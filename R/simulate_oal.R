@@ -1,4 +1,6 @@
 # modified by Jeremiah Jones, 2021 to investigate positivity violations
+options(future.rng.onMisuse = "ignore")
+
 library(MASS)
 # library(glmnet)
 library(lqa)
