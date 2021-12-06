@@ -1,6 +1,7 @@
 # modified by Jeremiah Jones, 2021 to investigate positivity violations
 library(MASS)
-library(glmnet)
+# library(glmnet)
+library(lqa)
 library(dplyr)
 
 source("./R/oal_funs.R")
@@ -10,7 +11,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
                          verbose = 1,
                          pos_viol_cut = .05) {
   lambda2_vals <- if (use_ridge) {
-    c(0, 10^(-2:2))
+    c(0, 10^(-2:1))
   } else {
     0
   }
@@ -105,21 +106,21 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     ######################################################################################
     
     grid_min <- grid_search_oal_fit(
-      gamma_vals, lambda_vec = n^(lambda_vec - 1), 
+      gamma_vals, 
+      lambda_vec = n^(lambda_vec),
       X = X, A = Data$A, Y = Data$Y,
       betaXY = betaXY,
       lambda2_vals = lambda2_vals
     )
-    
-    grid_min_exact <- grid_search_oal_fit(
-      gamma_vals = grid_min$gamma, lambda_vec = grid_min$lambda1, 
-      X = X, A = Data$A, Y = Data$Y,
-      betaXY = betaXY, exact = T,
-      lambda2_vals = grid_min$lambda2,
-      trunc_vals = grid_min$trunc
-    )
+    grid_min_exact <- grid_min
+    # grid_min_exact <- grid_search_oal_fit(
+    #   gamma_vals = grid_min$gamma, lambda_vec = grid_min$lambda1, 
+    #   X = X, A = Data$A, Y = Data$Y,
+    #   betaXY = betaXY, exact = T,
+    #   lambda2_vals = grid_min$lambda2,
+    #   trunc_vals = grid_min$trunc
+    # )
 
-    
     wamds[sim_idx] <- grid_min_exact$wamd
     # save coefficients
     coefs[sim_idx, ] <- grid_min_exact$coefs
@@ -154,7 +155,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   return(result)
 }
 
-foo<-simulate_oal(200, 10, 10, 0.5, 1, 1, T, 2)
-bar<-simulate_oal(200, 10, 10, 0.5, 1, 1, F, 2)
-foo$metrics[[1]]
-bar$metrics[[1]]
+# foo<-simulate_oal(200, 10, 10, 0.5, 1, 1, T, 2)
+# bar<-simulate_oal(200, 10, 10, 0.5, 1, 1, F, 2)
+# foo$metrics[[1]]
+# bar$metrics[[1]]
