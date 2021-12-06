@@ -154,4 +154,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   return(result)
 }
 
-# str(simulate_oal(200, 10, 2, 0, 1, 1, F, 2))
+foo<-simulate_oal(200, 10, 10, 0.5, 1, 1, T, 2)
+bar<-simulate_oal(200, 10, 10, 0.5, 1, 1, F, 2)
+foo$metrics[[1]]
+bar$metrics[[1]]

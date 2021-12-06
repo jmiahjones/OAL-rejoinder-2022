@@ -68,7 +68,11 @@ oal_fitting <- function(
   coefs_all <- do.call(coef, coef_call_list)
   coefs_all <- (1 + lambda2) * coefs_all
   
-  est_propens <- predict(logit_oal, type = "response", newx = X, s = s)
+  predict_call_list <- c(
+    coef_call_list,
+    list(type = "response", newx = X)
+  )
+  est_propens <- do.call(predict, predict_call_list)
 
   wgt <- create_trunc_weights(est_propens, A = A, trunc = trunc)
 
@@ -115,14 +119,14 @@ grid_search_oal_fit <- function(
         this_oal <- try(
           oal_fitting(X, A, Y, betaXY, gamma,
             lambda1 = lambda1, lambda2 = lambda2,
-            trunc = trunc
+            trunc = trunc, exact = exact
           ),
           silent = T
         )
 
         if (
-          inherits(this_oal, "try-error") | 
-          is.null(this_oal) |
+          inherits(this_oal, "try-error") || 
+          is.null(this_oal) ||
           is.na(this_oal$ate)
         ) {
           message(sprintf(
