@@ -3,6 +3,11 @@ library(MASS)
 # library(glmnet)
 library(lqa)
 library(dplyr)
+library(foreach)
+library(doFuture)
+plan(multicore, workers = 4)
+registerDoFuture()
+
 
 source("./R/oal_funs.R")
 
@@ -72,7 +77,8 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   unpen <- matrix(NA, nrow = num_simulations, ncol = p)
   prop_positivity <- rep(NA, num_simulations)
   colnames(coefs) <- var.list.plus.int
-  for (sim_idx in seq.int(num_simulations)) {
+  sim_res <- foreach(sim_idx = seq.int(num_simulations)) %dopar% {
+    
     set.seed(2021 + sim_idx)
     ### simulate data
     Sigma_x <- matrix(rho * sig_x^2, nrow = p, ncol = p)
@@ -86,7 +92,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     gA_x <- as.numeric(as.matrix(Data[, var.list]) %*% alpha_v)
     pA <- expit(gA_x)
     summary(pA)
-    prop_positivity[sim_idx] <- mean(pA < pos_viol_cut)
+    prop_positivity <- mean(pA < pos_viol_cut)
     Data$A <- as.numeric(runif(n = length(pA)) < pA) # simulate A
     gY_xA <- as.numeric(as.matrix(Data[, var.list]) %*% beta_v)
     Data$Y <- gY_xA + rnorm(n = n)
@@ -99,7 +105,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     y.form <- formula(paste("Y~A+", paste(var.list, collapse = "+")))
     lm.Y <- lm(y.form, data = Data)
     betaXY <- coef(lm.Y)[var.list]
-    unpen[sim_idx, ] <- betaXY
+    unpen <- betaXY
 
     coeff_XA <- (matrix(NA, nrow = 1 + p, ncol = 100))
     rownames(coeff_XA) <- var.list.plus.int
@@ -124,27 +130,50 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     #   trunc_vals = grid_min$trunc
     # )
 
-    wamds[sim_idx] <- grid_min_exact$wamd
+    wamds <- grid_min_exact$wamd
     # save coefficients
-    coefs[sim_idx, ] <- grid_min_exact$coefs
+    coefs <- grid_min_exact$coefs
 
     # print out ATE corresponding to smallest wAMD value
-    ates[sim_idx] <- grid_min_exact$ate
+    ates <- grid_min_exact$ate
 
-    lambda2_chosens[sim_idx] <- grid_min_exact$lambda2
+    lambda2_chosens <- grid_min_exact$lambda2
 
     if (verbose == 2 | (verbose == 1 & sim_idx %% 10 == 1)) {
       message(sprintf("Completed simulation %i.", sim_idx))
     }
-  }
 
-  # mean(ates)
-  # colMeans(coefs[,1:8])
+    # pack the results to send back
+    list(
+      ates = ates,
+      lambda2_chosens = lambda2_chosens,
+      coefs = coefs,
+      wamds = wamds,
+      unpen = unpen,
+      prop_positivity = prop_positivity,
+      positivity_tol = min(min(pA), min(1 - pA))
+    )
+  }
+  
+  # unpack the reduced results
+  positivity_tol <- sapply(sim_res, function(x) x$positivity_tol)
+  positivity_tol <- min(positivity_tol)
+  for(sim_idx in seq.int(num_simulations)){
+    ates[sim_idx] = sim_res[[sim_idx]]$ates
+    coefs[sim_idx, ] = sim_res[[sim_idx]]$coefs
+    wamds[sim_idx] = sim_res[[sim_idx]]$wamds
+    lambda2_chosens[sim_idx] = sim_res[[sim_idx]]$lambda2_chosens
+    unpen[sim_idx, ] = sim_res[[sim_idx]]$unpen
+    prop_positivity[sim_idx] = sim_res[[sim_idx]]$prop_positivity 
+  }
+  # clean the baggage
+  rm(sim_res)
+
 
   is_selected <- 1 * (abs(coefs) > 1e-6)
 
   result <- tibble(
-    positivity_tol = min(min(pA), min(1 - pA)),
+    positivity_tol = positivity_tol,
     prop_positivity = mean(prop_positivity),
     method = ifelse(use_ridge, "GOAL", "OAL"),
     metrics = list(tibble(wamd = wamds, ate = ates, lambda2 = lambda2_chosens)),
@@ -158,8 +187,8 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   return(result)
 }
 
-# foo<-simulate_oal(200, 100, 100, 0.5, 1, 1, T, 2)
-# bar<-simulate_oal(200, 100, 100, 0.5, 1, 1, F, 2)
+# foo<-simulate_oal(200, 100, 20, 0.5, 1, 1, T, 2)
+# bar<-simulate_oal(200, 100, 20, 0.5, 1, 1, F, 2)
 # foo$metrics[[1]]
 # bar$metrics[[1]]
 
