@@ -12,7 +12,8 @@ simulate_oal <- function(n, p, num_simulations = 100L,
                          pos_viol_cut = .05) {
   lambda2_vals <- if (use_ridge) {
     c(0, 
-      10^c(-2,-1.5,-1,-.75,-.5,-.25,0,.25,.5,1)
+      # 10^c(-2,-1.5,-1,-.75,-.5,-.25,0,.25,.5,1)
+      10^-2:1
     )
   } else {
     0
@@ -157,7 +158,10 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   return(result)
 }
 
-# foo<-simulate_oal(200, 10, 10, 0.5, 1, 1, T, 2)
-# bar<-simulate_oal(200, 10, 10, 0.5, 1, 1, F, 2)
+# foo<-simulate_oal(200, 100, 100, 0.5, 1, 1, T, 2)
+# bar<-simulate_oal(200, 100, 100, 0.5, 1, 1, F, 2)
 # foo$metrics[[1]]
 # bar$metrics[[1]]
+
+# mean(foo$metrics[[1]]$ate)
+# mean(bar$metrics[[1]]$ate)

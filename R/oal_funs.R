@@ -51,8 +51,9 @@ oal_fitting <- function(
   pen <- abs(betaXY)^(-gamma)
   
   call_list <- list(
-    x = X1, y = A1, family = binomial(), intercept = F,
+    x = X1, y = A1, family = binomial(), intercept = T,
     standardize = F, penalty.factor = pen
+    # , type.logistic = "modified.Newton"
   )
   logit_oal <- do.call(glmnet::glmnet, call_list)
 

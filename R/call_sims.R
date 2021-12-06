@@ -50,9 +50,21 @@ source("./R/simulate_oal.R")
 
 # foo = simulate_oal(200, 100, 2, 0.00, 1/4, 1, F, verbose=2)
 
-results <- params %>% 
+# old single-core code
+# results <- params %>% 
+#   mutate(
+#     data=pmap(., simulate_oal)
+#   )
+
+# multicore
+library(multidplyr)
+cl <- new_cluster(3)
+results <- params %>%
+  partition(cluster) %>%
   mutate(
     data=pmap(., simulate_oal)
-  )
+  ) %>%
+  collect()
+
 
 qsave(results, file="./results/full_results_lqa.qs")
