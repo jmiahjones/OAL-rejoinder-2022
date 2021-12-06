@@ -66,10 +66,9 @@ oal_fitting <- function(
   # concatenate the call_list with the exact argument
   coef_call_list <- c(list(logit_oal), call_list, list(exact = exact, s = s))
   coefs_all <- do.call(coef, coef_call_list)
-
-  coefs_all <- coef(logit_oal, s = mean(pen) / lam2_adj * lambda1)
   coefs_all <- (1 + lambda2) * coefs_all
-  est_propens <- predict(logit_oal, type = "response", newx = X, s = mean(pen) * lambda1)
+  
+  est_propens <- predict(logit_oal, type = "response", newx = X, s = s)
 
   wgt <- create_trunc_weights(est_propens, A = A, trunc = trunc)
 
@@ -121,15 +120,15 @@ grid_search_oal_fit <- function(
           silent = T
         )
 
-        if (inherits(this_oal, "try-error")) {
-          next
-        }
-
-        if (is.null(this_oal)) {
-          next
-        }
-
-        if (is.na(this_oal$ate)) {
+        if (
+          inherits(this_oal, "try-error") | 
+          is.null(this_oal) |
+          is.na(this_oal$ate)
+        ) {
+          message(sprintf(
+            "Failed: lambda2=%.2f, lambda1=%.2f, gamma=%.2f",
+            lambda2, lambda1, gamma
+          ))
           next
         }
 
