@@ -55,4 +55,4 @@ results <- params %>%
     data=pmap(., simulate_oal)
   )
 
-qsave(results, file="./results/full_results_lqa.qs")
+qsave(results, file="./results/full_results.qs")

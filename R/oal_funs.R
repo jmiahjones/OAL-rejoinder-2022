@@ -60,9 +60,13 @@ oal_fitting <- function(
   # NOTE: lambda1 is on a different scale than the likelihood function
   #       ln in glmnet. Because we added artificial samples, we need
   #       to correct for this by making sure we multiply by (n+p)/n.
+  #       Additionally, to make it easier to compare glmnet and lqa,
+  #       let's scale by 1/n internally in this function rather than
+  #       externally in the simulate_oal function.
   d <- dim(X)
   lam2_adj <- ifelse(lambda2 == 0, 1, d[1] / sum(d))
-  s <- mean(pen) / lam2_adj * lambda1
+  lam1_adj <- 1 / d[1]
+  s <- mean(pen) / lam2_adj * lam1_adj * lambda1
 
   # concatenate the call_list with the exact argument
   coef_call_list <- c(list(logit_oal), call_list, list(exact = exact, s = s))
@@ -87,52 +91,6 @@ oal_fitting <- function(
   min_ate <- ATE_est(Y = Y, wgt = wgt, A = A)
 
   ret <- list(ate = min_ate, wAMD = wAMD, coefs = min_coefs)
-  return(ret)
-}
-
-oal_fitting <- function(
-  X, A, Y, betaXY, gamma, 
-  lambda1 = NULL, lambda2 = 0, trunc = 0.0,
-  exact = F
-) {
-  require(lqa)
-  stopifnot(length(lambda2) == 1, lambda2 >= 0)
-  if (!is.null(lambda1)) {
-    stopifnot(length(lambda1) == 1)
-  }
-  if (lambda2 == 0) {
-    X1 <- X
-    A1 <- A
-  } else {
-    X1 <- rbind(X, sqrt(lambda2) * diag(ncol(X)))
-    A1 <- c(A, rep(0, ncol(X)))
-  }
-  pen <- abs(betaXY)^(-gamma)
-  
-  oal_pen = adaptive.lasso(lambda = lambda1, al.weights = pen)
-  # run outcome-adaptive lasso model with appropriate penalty
-  logit_oal = lqa.default(
-    x = X1, y = A1, penalty = oal_pen, family = binomial(logit),
-    intercept = T, standardize = F
-  )
-  
-  coefs_all <- coef(logit_oal)
-  coefs_all <- (1 + lambda2) * coefs_all
-  
-  est_propens <- plogis(cbind(1, X) %*% coefs_all)
-
-  wgt <- create_trunc_weights(est_propens, A = A, trunc = trunc)
-
-  # estimate weighted absolute mean different over all covariates using this lambda to generate weights
-  wAMD <- wAMD_function(
-    X = X, A = A,
-    wgt = wgt, beta = betaXY
-  )$wAMD
-
-  coefs_all <- as.numeric(coefs_all)
-  min_ate <- ATE_est(Y = Y, wgt = wgt, A = A)
-
-  ret <- list(ate = min_ate, wAMD = wAMD, coefs = coefs_all)
   return(ret)
 }
 
