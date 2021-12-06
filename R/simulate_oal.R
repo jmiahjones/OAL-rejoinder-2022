@@ -107,7 +107,8 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     grid_min <- grid_search_oal_fit(
       gamma_vals, lambda_vec = n^(lambda_vec - 1), 
       X = X, A = Data$A, Y = Data$Y,
-      betaXY = betaXY
+      betaXY = betaXY,
+      lambda2_vals = lambda2_vals
     )
     
     grid_min_exact <- grid_search_oal_fit(
