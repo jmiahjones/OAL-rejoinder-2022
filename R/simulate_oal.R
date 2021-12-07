@@ -71,14 +71,6 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   expit <- plogis
   fam <- binomial()
 
-  # ates <- sapply(1L:num_simulations, function(sim_idx){
-  ates <- vector("numeric", num_simulations)
-  lambda2_chosens <- vector("numeric", num_simulations)
-  coefs <- matrix(NA, nrow = num_simulations, ncol = 1 + p)
-  wamds <- vector("numeric", num_simulations)
-  unpen <- matrix(NA, nrow = num_simulations, ncol = p)
-  prop_positivity <- rep(NA, num_simulations)
-  colnames(coefs) <- var.list.plus.int
   sim_res <- foreach(sim_idx = seq.int(num_simulations)) %dopar% {
     
     set.seed(2021 + sim_idx)
@@ -140,6 +132,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     ates <- grid_min_exact$ate
 
     lambda2_chosens <- grid_min_exact$lambda2
+    lambda1_chosens <- grid_min_exact$lambda1
 
     if (verbose == 2 | (verbose == 1 & sim_idx %% 10 == 1)) {
       message(sprintf("Completed simulation %i.", sim_idx))
@@ -149,6 +142,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     list(
       ates = ates,
       lambda2_chosens = lambda2_chosens,
+      lambda1_chosens = lambda1_chosens,
       coefs = coefs,
       wamds = wamds,
       unpen = unpen,
@@ -157,6 +151,15 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     )
   }
   
+  ates <- vector("numeric", num_simulations)
+  lambda1_chosens <- vector("numeric", num_simulations)
+  lambda2_chosens <- vector("numeric", num_simulations)
+  coefs <- matrix(NA, nrow = num_simulations, ncol = 1 + p)
+  wamds <- vector("numeric", num_simulations)
+  unpen <- matrix(NA, nrow = num_simulations, ncol = p)
+  prop_positivity <- rep(NA, num_simulations)
+  colnames(coefs) <- var.list.plus.int
+
   # unpack the reduced results
   positivity_tol <- sapply(sim_res, function(x) x$positivity_tol)
   positivity_tol <- min(positivity_tol)
@@ -165,6 +168,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     coefs[sim_idx, ] = sim_res[[sim_idx]]$coefs
     wamds[sim_idx] = sim_res[[sim_idx]]$wamds
     lambda2_chosens[sim_idx] = sim_res[[sim_idx]]$lambda2_chosens
+    lambda1_chosens[sim_idx] = sim_res[[sim_idx]]$lambda1_chosens
     unpen[sim_idx, ] = sim_res[[sim_idx]]$unpen
     prop_positivity[sim_idx] = sim_res[[sim_idx]]$prop_positivity 
   }
@@ -178,7 +182,11 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     positivity_tol = positivity_tol,
     prop_positivity = mean(prop_positivity),
     method = ifelse(use_ridge, "GOAL", "OAL"),
-    metrics = list(tibble(wamd = wamds, ate = ates, lambda2 = lambda2_chosens)),
+    metrics = list(tibble(
+      wamd = wamds, ate = ates,
+      lambda1 = lambda1_chosens,
+      lambda2 = lambda2_chosens
+    )),
     sel_perf = list(tibble(
       sel_idx = 1:p,
       prop_sel = colMeans(is_selected)[-1],
