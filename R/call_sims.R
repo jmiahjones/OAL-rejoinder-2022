@@ -1,6 +1,7 @@
 # call_sims.R
 library(tibble)
 library(tidyr)
+library(dplyr)
 library(purrr)
 library(qs)
 
