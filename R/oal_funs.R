@@ -14,13 +14,37 @@ trunc_propensity <- function(propensity, trunc = 0.0) {
   }
   return(propensity)
 }
-create_trunc_weights <- function(propensity, A, trunc = 0.0) {
+
+create_weights <- function(propensity, A, type = c("trunc", "overlap"), ...) {
+  if(length(type) > 1) {
+    type = type[1]
+  }
+
+  weights <- switch(
+    tolower(substr(type, 1, 1)),
+    t = create_trunc_weights(
+      propensity=propensity, A=A, ...
+    ),
+    o = create_overlap_weights(
+      propensity=propensity, A=A, ...
+    )
+  )
+  return(weights)
+}
+
+create_trunc_weights <- function(propensity, A, trunc = 0.0, ...) {
   propensity <- trunc_propensity(propensity, trunc)
   weights <- rep(0, length(A))
   weights[A == 1] <- 1 / propensity[A == 1]
   weights[A == 0] <- 1 / (1 - propensity[A == 0])
   return(weights)
 }
+
+create_overlap_weights <- function(propensity, A, ...) {
+  weights <- abs( A - propensity )
+  return(weights)
+}
+
 wAMD_function <- function(X, A, wgt, beta) {
   diff_vec <- sapply(seq.int(ncol(X)), function(jj) {
     this_var <- X[, jj] * wgt
@@ -35,7 +59,7 @@ wAMD_function <- function(X, A, wgt, beta) {
 oal_fitting <- function(
   X, A, Y, betaXY, gamma, 
   lambda1 = NULL, lambda2 = 0, trunc = 0.0,
-  exact = F
+  exact = F, weight_type = "trunc"
 ) {
   stopifnot(length(lambda2) == 1, lambda2 >= 0)
   if (!is.null(lambda1)) {
@@ -79,9 +103,10 @@ oal_fitting <- function(
   )
   est_propens <- do.call(predict, predict_call_list)
 
-  wgt <- create_trunc_weights(est_propens, A = A, trunc = trunc)
+  wgt <- create_weights(est_propens, A, type = weight_type, 
+                        trunc = trunc)
 
-  # estimate weighted absolute mean different over all covariates using this lambda to generate weights
+  # estimate weighted absolute mean difference over all covariates using this lambda to generate weights
   wAMD <- wAMD_function(
     X = X, A = A,
     wgt = wgt, beta = betaXY
@@ -98,7 +123,7 @@ grid_search_oal_fit <- function(
   gamma_vals, lambda_vec,
   X, A, Y, betaXY,
   trunc_vals = 0, lambda2_vals = 0,
-  exact = F
+  exact = F, weight_type = "trunc"
 ) {
   stopifnot(length(lambda_vec) == length(gamma_vals))
   p <- ncol(X)
@@ -124,7 +149,8 @@ grid_search_oal_fit <- function(
         this_oal <- try(
           oal_fitting(X, A, Y, betaXY, gamma,
             lambda1 = lambda1, lambda2 = lambda2,
-            trunc = trunc, exact = exact
+            trunc = trunc, exact = exact,
+            weight_type = weight_type
           ),
           silent = T
         )

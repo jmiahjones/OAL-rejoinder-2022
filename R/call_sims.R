@@ -15,13 +15,15 @@ base_params <- tribble(
 vary_params <- tidyr::expand_grid(rho=c(0, 0.25, 0.5, 0.75), 
   sig_x=seq(.2, 1, by=.2), 
   scenario=1, 
-  use_ridge=c(F,T))
+  method=c(1,2,3)
+  # use_ridge=c(F,T)
+  )
 
 params <- tidyr::expand_grid(base_params, vary_params)
-stopifnot(
-  nrow(params) == (nrow(base_params) * nrow(vary_params)),
-  ncol(params) == (ncol(base_params) + ncol(vary_params))
-)
+params <- params %>%
+  mutate(use_ridge = (method >= 3),
+         use_overlap = (method == 2)) %>%
+  select(!method)
 
 # params <- tribble(
 #   ~n, ~p, ~num_simulations, ~rho, ~sig_x, ~scenario, ~use_ridge,

@@ -16,6 +16,7 @@ source("./R/oal_funs.R")
 simulate_oal <- function(n, p, num_simulations = 100L,
                          rho, sig_x, scenario, use_ridge = F,
                          verbose = 1,
+                         use_overlap = F,
                          pos_viol_cut = .05) {
   lambda2_vals <- if (use_ridge) {
     c(0, 
@@ -107,13 +108,14 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     ######################################################################################
     #####  Run outcome adaptive lasso for each lambda value
     ######################################################################################
-    
+    weight_type = ifelse(use_overlap, "overlap", "trunc")
     grid_min <- grid_search_oal_fit(
       gamma_vals, 
       lambda_vec = n^(lambda_vec),
       X = X, A = Data$A, Y = Data$Y,
       betaXY = betaXY,
-      lambda2_vals = lambda2_vals
+      lambda2_vals = lambda2_vals,
+      weight_type = weight_type
     )
     grid_min_exact <- grid_min
     # grid_min_exact <- grid_search_oal_fit(
@@ -135,7 +137,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     lambda1_chosens <- grid_min_exact$lambda1
 
     if (verbose == 2 | (verbose == 1 & sim_idx %% 10 == 1)) {
-      message(sprintf("Completed simulation %i.", sim_idx))
+      print(sprintf("Completed simulation %i.", sim_idx))
     }
 
     # pack the results to send back
@@ -197,8 +199,8 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   return(result)
 }
 
-# foo<-simulate_oal(200, 100, 20, 0.5, 1, 1, T, 2)
-# bar<-simulate_oal(200, 100, 20, 0.5, 1, 1, F, 2)
+# foo<-simulate_oal(200, 100, 100, 0.5, 1, 1, T, 2, F)
+# bar<-simulate_oal(200, 100, 100, 0.5, 1, 1, F, 2, T)
 # foo$metrics[[1]]
 # bar$metrics[[1]]
 
