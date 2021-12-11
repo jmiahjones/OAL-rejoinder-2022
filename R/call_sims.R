@@ -16,42 +16,21 @@ base_params <- tribble(
 vary_params <- tidyr::expand_grid(rho=c(0, 0.25, 0.5, 0.75), 
   sig_x=seq(.2, 1, by=.2), 
   scenario=1, 
-  method=c(1,2,3)
-  # use_ridge=c(F,T)
+  method=factor(1:4, levels=1:4, 
+    labels=c(
+      "OAL", "OAL+overlap", "GOALn", "GLM"
+    )
   )
+)
 
 params <- tidyr::expand_grid(base_params, vary_params)
-params <- params %>%
-  mutate(use_ridge = (method >= 3),
-         use_overlap = (method == 2)) %>%
-  select(!method)
+# params <- params %>%
+#   mutate(use_ridge = (method == "GOALn"),
+#          use_overlap = (method == "OAL+overlap"),
+#          use_glm = (method == "GLM"))
 
-# params <- tribble(
-#   ~n, ~p, ~num_simulations, ~rho, ~sig_x, ~scenario, ~use_ridge,
-#   200, 100, 100, 0.00, 1/4, 1, F,
-#   200, 100, 100, 0.00, 1/4, 1, T,
-#   200, 100, 100, 0.50, 1/4, 1, F,
-#   200, 100, 100, 0.50, 1/4, 1, T,
-#   200, 100, 100, 0.75, 1/4, 1, F,
-#   200, 100, 100, 0.75, 1/4, 1, T,
-  
-#   200, 100, 100, 0.00,   1, 1, F,
-#   200, 100, 100, 0.75,   1, 1, F,
-#   200, 100, 100, 0.00,   1, 1, T,
-#   200, 100, 100, 0.75,   1, 1, T,
-  
-#   500, 200, 100, 0.00, 1/4, 1, F,
-#   500, 200, 100, 0.00, 1/4, 1, T,
-#   500, 200, 100, 0.50, 1/4, 1, F,
-#   500, 200, 100, 0.50, 1/4, 1, T,
-#   500, 200, 100, 0.75, 1/4, 1, F,
-#   500, 200, 100, 0.75, 1/4, 1, T
-  
-# )
 
 source("./R/simulate_oal.R")
-
-# foo = simulate_oal(200, 100, 2, 0.00, 1/4, 1, F, verbose=2)
 
 results <- params %>% 
   mutate(

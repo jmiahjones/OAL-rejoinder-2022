@@ -14,9 +14,9 @@ registerDoFuture()
 source("./R/oal_funs.R")
 
 simulate_oal <- function(n, p, num_simulations = 100L,
-                         rho, sig_x, scenario, use_ridge = F,
+                         rho, sig_x, scenario,
+                         method,
                          verbose = 1,
-                         use_overlap = F,
                          pos_viol_cut = .05) {
   lambda2_vals <- if (use_ridge) {
     c(0, 
@@ -26,6 +26,10 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   } else {
     0
   }
+
+  use_ridge = (method == "GOALn")
+  use_overlap = (method == "OAL+overlap")
+  use_glm = (method == "GLM")
 
   # set information for simulating coviariates
   mean_x <- 0
@@ -102,12 +106,16 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     betaXY <- coef(lm.Y)[var.list]
     unpen <- betaXY
 
-    coeff_XA <- (matrix(NA, nrow = 1 + p, ncol = 100))
-    rownames(coeff_XA) <- var.list.plus.int
-
     ######################################################################################
     #####  Run outcome adaptive lasso for each lambda value
     ######################################################################################
+    if(use_glm) {
+      fit <- glm(Data$A ~ X, family = fam)
+      coefs <- coef(fit)
+      wAMD_function(X, Data$A, create, coefs)
+    } else {
+
+    }
     weight_type = ifelse(use_overlap, "overlap", "trunc")
     grid_min <- grid_search_oal_fit(
       gamma_vals, 
@@ -118,13 +126,6 @@ simulate_oal <- function(n, p, num_simulations = 100L,
       weight_type = weight_type
     )
     grid_min_exact <- grid_min
-    # grid_min_exact <- grid_search_oal_fit(
-    #   gamma_vals = grid_min$gamma, lambda_vec = grid_min$lambda1, 
-    #   X = X, A = Data$A, Y = Data$Y,
-    #   betaXY = betaXY, exact = T,
-    #   lambda2_vals = grid_min$lambda2,
-    #   trunc_vals = grid_min$trunc
-    # )
 
     wamds <- grid_min_exact$wamd
     # save coefficients
