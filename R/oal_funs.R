@@ -1,49 +1,60 @@
 require(glmnet)
 require(mlr3)
 
-ATE_est <- function(Y, A, wgt, est_method, weight_type, ...) {
-  if(est_method == "TMLE") {
-    # tmle code
-    ATE_est_tmle(Y, A, wgt, propensity)
-  } else if(est_method == "IPW") {
-    ATE_est_IPW(Y, wgt, A)
-  } else if(est_method == "AIPW") {
-    ATE_est_AIPW(Y, wgt, A)
+ATE_est <- function(Y, A, wgt, est_method, Q.hat=NULL, propensity=NULL, ...) {
+  if(est_method %in% c("TMLE", "AIPW")){
+    stopifnot(
+      !is.null(Q.hat), ncol(Q.hat)==2
+    )
+    if(est_method == "TMLE")
+      stopifnot(!is.null(propensity))
   }
+  ate <- if(est_method == "TMLE") {
+    ATE_est_tmle(Y, A, wgt, Q.hat, propensity)
+  } else if(est_method == "IPW") {
+    ATE_est_IPW(Y, A, wgt)
+  } else if(est_method == "AIPW") {
+    ATE_est_AIPW(Y, A, wgt, Q.hat)
+  }
+  return(ate)
 }
 
-ATE_est_tml <- function(Y, A, wgt, propensity){
+scale_01 <- function(Y, lims) {
+  (Y - lims[1]) / diff(lims)
+}
+
+inv_scale_01 <- function(Y, lims) {
+  Y * diff(lims) + lims[1]
+}
+
+ATE_est_tmle <- function(Y, A, wgt, Q.hat, propensity, trunc=0.01){
+  QAX <- A * Q.hat[,2] + (1-A) * Q.hat[,1]
   H1 <- A
   H0 <- 1-A
-  # scale Y 0 to 1
-  Ymin <- min(Y)
-  Y <- Y - Ymin
-  Ymax <- max(Y)
-  Y <- Y / Ymax
-  
+
   suppressWarnings(
-    tmle_coef <- coef(glm(Y ~ -1 + offset(Q.hat) + H1 + H0, weights = wgt))
+    tmle_fit <- (lm(Y ~ -1 + offset(QAX) + H0 + H1, weights = wgt))
   )
-  Q1star <- plogis(Q.hat + H1*tmle_coef[1])
-  Q0star <- plogis(Q.hat + H0*tmle_coef[2])
-
-  # unscale
-  Y = Ymax * Y + Ymin
-  Q1 = Ymax * Q1star + Ymin
-  Q0 = Ymax * Q0star + Ymin
-
-  mean(Q1 - Q0)
+  tmle_coef <- coef(tmle_fit)
+  Q1star <- Q.hat[,2] + tmle_coef[2]
+  Q0star <- Q.hat[,1] + tmle_coef[1]
+  
+  mean(Q1star - Q0star)
 }
 
-ATE_est_IPW <- function(Y, wgt, A) {
-  num_ATE <- Y * wgt
-  res <- ((sum(num_ATE[A == 1]) / sum(wgt[A == 1])) - (sum(num_ATE[A == 0]) / sum(wgt[A == 0])))
+ATE_est_IPW <- function(Y, A, wgt) {
+  wgt1 <- A * wgt
+  wgt0 <- (1-A) * wgt
+  res <- sum(wgt1 * Y) / sum(wgt1) - (sum(wgt0 * Y) / sum(wgt0))
   return(res)
 }
 
-ATE_est_AIPW <- function(Y, X, A, wgt, Q.hat) {
-  eps.hat <- Y - Q.hat
-  influences <- wgt*eps.hat + Q.hat
+ATE_est_AIPW <- function(Y, A, wgt, Q.hat) {
+  # browser()
+  QAX <- A * Q.hat[,2] + (1-A) * Q.hat[,1]
+  eps.hat <- Y - QAX
+  influences <- (-(1-A) + A)*wgt*eps.hat + Q.hat[,2] - Q.hat[,1]
+  # browser()
   mean(influences)
 }
 
