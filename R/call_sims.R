@@ -16,10 +16,14 @@ base_params <- tribble(
 vary_params <- tidyr::expand_grid(rho=c(0, 0.25, 0.5, 0.75), 
   sig_x=seq(.2, 1, by=.2), 
   scenario=1, 
-  method=factor(1:4, levels=1:4, 
-    labels=c(
-      "OAL", "OAL+overlap", "GOALn", "GLM"
-    )
+  # method=factor(1:4, levels=1:4, 
+  #   labels=c(
+  #     "OAL", "OAL+overlap", "GOALn", "GLM"
+  #   )
+  # ),
+  sel_method=factor(1:2, levels=1:2, labels=c("OAL", "GOALn")),
+  est_method=factor(1:5, levels=1:5,
+    labels=c("IPW", "AIPW", "Overlap", "Trunc", "TMLE")
   )
 )
 
