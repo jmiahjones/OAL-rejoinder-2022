@@ -221,5 +221,5 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   return(result)
 }
 
-bar <- simulate_oal(200, 100, 10, rho = 0.75, sig_x = 1, scenario = 1, sel_method = "OAL", verbose=2)
+# bar <- simulate_oal(200, 100, 10, rho = 0.75, sig_x = 1, scenario = 1, sel_method = "OAL", verbose=2)
 
