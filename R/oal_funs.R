@@ -1,6 +1,48 @@
 require(glmnet)
 require(mlr3)
 
+# Helper function that translates a named weight type
+# into a numeric truncation value.
+get_trunc_val <- function(weight_type) {
+  stopifnot(is.character(weight_type) || 
+    is.factor(weight_type))
+  trunc <- switch(
+    weight_type,
+    "trunc@.05" = 0.05,
+    "trunc@.01" = 0.01,
+    "overlap" = 0.0,
+    "notrunc" = 0.0
+  )
+  if(is.null(trunc))
+    stop(paste0(
+      "Error in get_trunc_val: truncation level for",
+      "weight type ", weight_type, " is undefined."
+    ))
+  return(trunc)
+}
+
+
+# Helper function that translates a named weight type
+# into a character weight class. The weight class
+# is used directly by the create_weights function.
+get_weight_class <- function(weight_type) {
+  stopifnot(is.character(weight_type) || 
+    is.factor(weight_type))
+  trunc <- switch(
+    weight_type,
+    "trunc@.05" = "trunc",
+    "trunc@.01" = "trunc",
+    "overlap" = "overlap",
+    "notrunc" = "trunc"
+  )
+  if(is.null(trunc))
+    stop(paste0(
+      "Error in get_trunc_val: truncation level for",
+      "weight type ", weight_type, " is undefined."
+    ))
+  return(trunc)
+}
+
 ATE_est <- function(Y, A, wgt, est_method, Q.hat=NULL, propensity=NULL, ...) {
   if(est_method %in% c("TMLE", "AIPW")){
     stopifnot(
@@ -110,7 +152,7 @@ wAMD_function <- function(X, A, wgt, beta) {
 
 oal_fitting <- function(
   X, A, Y, betaXY, gamma, 
-  lambda1 = NULL, lambda2 = 0, trunc = 0.0,
+  lambda1 = NULL, lambda2 = 0,
   exact = F
 ) {
   stopifnot(length(lambda2) == 1, lambda2 >= 0)
@@ -162,7 +204,7 @@ oal_fitting <- function(
 
 grid_search_oal_fit <- function(gamma_vals, lambda_vec,
                                 X, A, Y, betaXY,
-                                trunc_vals = 0, lambda2_vals = 0,
+                                lambda2_vals = 0,
                                 exact = F, weight_types = "trunc") {
   stopifnot(length(lambda_vec) == length(gamma_vals))
   p <- ncol(X)
@@ -177,54 +219,52 @@ grid_search_oal_fit <- function(gamma_vals, lambda_vec,
       # gamma <- 1
       lambda1 <- lambda_vec[gam_idx]
 
-      for (trunc_idx in seq_along(trunc_vals)) {
-        trunc <- trunc_vals[trunc_idx]
+      this_oal <- try(
+        oal_fitting(X, A, Y, betaXY, gamma,
+          lambda1 = lambda1, lambda2 = lambda2,
+          exact = exact
+        ),
+        silent = T
+      )
 
-        this_oal <- try(
-          oal_fitting(X, A, Y, betaXY, gamma,
-            lambda1 = lambda1, lambda2 = lambda2,
-            trunc = trunc, exact = exact
-          ),
-          silent = T
+      if (
+        inherits(this_oal, "try-error") ||
+          is.null(this_oal)
+      ) {
+        message(sprintf(
+          "Failed: lambda2=%.2f, lambda1=%.2f, gamma=%.2f",
+          lambda2, lambda1, gamma
+        ))
+        next
+      }
+
+      for (wgt_idx in seq.int(num_weights)) {
+        wgt_type <- weight_types[wgt_idx]
+        trunc <- get_trunc_val(wgt_type)
+        wgt_class <- get_weight_class(wgt_type)
+        wgt <- create_weights(this_oal$propensity, A,
+          type = wgt_class,
+          trunc = trunc
         )
 
-        if (
-          inherits(this_oal, "try-error") ||
-            is.null(this_oal)
-        ) {
-          message(sprintf(
-            "Failed: lambda2=%.2f, lambda1=%.2f, gamma=%.2f",
-            lambda2, lambda1, gamma
-          ))
-          next
-        }
+        # estimate weighted absolute mean difference over all covariates using this lambda to generate weights
+        wAMD <- wAMD_function(
+          X = X, A = A,
+          wgt = wgt, beta = betaXY
+        )$wAMD
 
-        for (wgt_idx in seq.int(num_weights)) {
-          wgt_type <- weight_types[wgt_idx]
-          wgt <- create_weights(this_oal$propensity, A,
-            type = wgt_type,
-            trunc = trunc
+        if (wAMD < out[[wgt_idx]]$wamd) {
+          out[[wgt_idx]] <- list(
+            wgt_type = wgt_type,
+            wamd = wAMD, coefs = this_oal$coefs,
+            wgt = wgt, lambda1 = lambda1,
+            gamma = gamma, lambda2 = lambda2,
+            trunc = trunc, propensity = this_oal$propensity
           )
-
-          # estimate weighted absolute mean difference over all covariates using this lambda to generate weights
-          wAMD <- wAMD_function(
-            X = X, A = A,
-            wgt = wgt, beta = betaXY
-          )$wAMD
-
-          if (wAMD < out[[wgt_idx]]$wamd) {
-            out[[wgt_idx]] <- list(
-              wgt_type = wgt_type,
-              wamd = wAMD, coefs = this_oal$coefs,
-              wgt = wgt, lambda1 = lambda1,
-              gamma = gamma, lambda2 = lambda2,
-              trunc = trunc
-            )
-          }
         }
       }
     }
   }
-  
+
   return(out)
 }
