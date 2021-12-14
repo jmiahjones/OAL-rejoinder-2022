@@ -143,6 +143,9 @@ grid_search_oal_fit <- function(gamma_vals, lambda_vec,
 
       for (wgt_idx in seq.int(num_weights)) {
         wgt_type <- weight_types[wgt_idx]
+        # translates the string wgt_type into a truncation level
+        # and class--e.g., trunc@.05 => class trunc, trunc=.05,
+        # while overlap => class overlap, trunc=0.0 (unused)
         trunc <- get_trunc_val(wgt_type)
         wgt_class <- get_weight_class(wgt_type)
         wgt <- create_weights(this_oal$propensity, A,
@@ -162,7 +165,8 @@ grid_search_oal_fit <- function(gamma_vals, lambda_vec,
             wamd = wAMD, coefs = this_oal$coefs,
             wgt = wgt, lambda1 = lambda1,
             gamma = gamma, lambda2 = lambda2,
-            trunc = trunc, propensity = this_oal$propensity
+            trunc = trunc, wgt_class = wgt_class,
+            propensity = this_oal$propensity
           )
         }
       }

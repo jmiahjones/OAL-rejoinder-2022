@@ -85,7 +85,7 @@ trunc_propensity <- function(propensity, trunc = 0.0) {
 # Weight creation function that should be used directly.
 # Dispactches to the truncated weight and overlap weight
 # creation functions.
-create_weights <- function(propensity, A, type = c("trunc", "overlap"), ...) {
+create_weights <- function(propensity, A, type, ...) {
   if(length(type) > 1) {
     type = type[1]
   }
@@ -103,7 +103,7 @@ create_weights <- function(propensity, A, type = c("trunc", "overlap"), ...) {
 }
 
 # Helper function: creates IPW at the desired truncation level.
-create_trunc_weights <- function(propensity, A, trunc = 0.0, ...) {
+create_trunc_weights <- function(propensity, A, trunc, ...) {
   propensity <- trunc_propensity(propensity, trunc)
   weights <- rep(0, length(A))
   weights[A == 1] <- 1 / propensity[A == 1]

@@ -139,6 +139,8 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     lambda2_chosens <- purrr::map_dbl(grid_min, ~.$lambda2)
     lambda1_chosens <- purrr::map_dbl(grid_min, ~.$lambda1)
     gamma_chosens <- purrr::map_dbl(grid_min, ~.$gamma)
+    truncs <- purrr::map_dbl(grid_min, ~.$trunc)
+    wgt_classes <- purrr::map_chr(grid_min, ~.$wgt_class)
     
     # validation: ensure that the weight types are in 
     # the exact order in which they were requested
@@ -175,6 +177,8 @@ simulate_oal <- function(n, p, num_simulations = 100L,
         lambda2_chosens = lambda2_chosens,
         lambda1_chosens = lambda1_chosens,
         gamma_chosens = gamma_chosens,
+        trunc = truncs,
+        wgt_class = wgt_classes,
         wamds = wamds,
         sel_idx = purrr::map(coefs, ~ 1:(p+1)),
         coefs = coefs
@@ -194,5 +198,5 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   return(result)
 }
 
-# bar <- simulate_oal(200, 100, 10, rho = 0.75, sig_x = 1, scenario = 1, sel_method = "OAL", verbose=2)
-
+# bar <- simulate_oal(200, 100, 4, rho = 0.75, sig_x = 1, scenario = 1, sel_method = "OAL", verbose=2)
+# bar %>% unnest(method_results) %>% select(weight_type, trunc, wgt_class)
