@@ -11,7 +11,6 @@ library(purrr)
 library(tidyr)
 library(mlr3)
 library(mlr3learners)
-library(mlr3pipelines)
 library(data.table)
 lgr::get_logger("mlr3")$set_threshold("warn")
 plan(multicore, workers = 4)
@@ -20,6 +19,7 @@ registerDoFuture()
 
 
 source("./R/oal_funs.R")
+source("./R/ate_funs.R")
 
 # n=200; p=100; num_simulations=100; rho=0; sig_x=.6; scenario=1
 # sel_method="OAL"; est_method="IPW"; verbose=1; pos_viol_cut=.05
@@ -132,55 +132,28 @@ simulate_oal <- function(n, p, num_simulations = 100L,
       lambda2_vals = lambda2_vals,
       weight_types = weight_types
     )
-    grid_min_exact <- grid_min
 
     # save coefficients, wamd metric, and hyperparameters
-    coefs <- purrr::map(grid_min_exact, ~.$coefs)
-    wamds <- purrr::map_dbl(grid_min_exact, ~.$wamd)
-    lambda2_chosens <- purrr::map_dbl(grid_min_exact, ~.$lambda2)
-    lambda1_chosens <- purrr::map_dbl(grid_min_exact, ~.$lambda1)
-    gamma_chosens <- purrr::map_dbl(grid_min_exact, ~.$gamma)
+    coefs <- purrr::map(grid_min, ~.$coefs)
+    wamds <- purrr::map_dbl(grid_min, ~.$wamd)
+    lambda2_chosens <- purrr::map_dbl(grid_min, ~.$lambda2)
+    lambda1_chosens <- purrr::map_dbl(grid_min, ~.$lambda1)
+    gamma_chosens <- purrr::map_dbl(grid_min, ~.$gamma)
     
     # validation: ensure that the weight types are in 
     # the exact order in which they were requested
-    stopifnot(all(purrr::map_chr(grid_min_exact, ~.$wgt_type)
+    stopifnot(all(purrr::map_chr(grid_min, ~.$wgt_type)
       == weight_types))
     positivity_tol <- min(min(pA), min(1 - pA))
     
-    # create Q outcome regression matrix for TMLE
-    Y_task <- as_task_regr(Data, target = "Y")
-    # using parametric model for simplicity
-    lm_lrn <- lrn("regr.lm")
-    resampling <- rsmp("cv", folds = 5L)
-    rr = resample(Y_task, lm_lrn, resampling, store_models = TRUE)
-    
-    Q <- matrix(data = NA, nrow = n, ncol = 2)
-    colnames(Q) <- c("Q0", "Q1")
-    for(i in seq.int(5L)) {
-      test_idxs <- rr$resampling$test_set(i)
-      newdata <- Data[test_idxs,]; newdata$A <- 0
-      Q[test_idxs, 1] <- rr$learners[[i]]$
-        predict_newdata(newdata, task=Y_task)$response
-      newdata$A <- 1
-      Q[test_idxs, 2] <- rr$learners[[i]]$
-        predict_newdata(newdata, task=Y_task)$response
-    }
-    
-    # pred_df <- as.data.table(rr$prediction())
-    # setorder(pred_df, "row_ids")
-    # Q.hat <- pred_df$response
-
-    # stopifnot(
-    #   max(abs(
-    #     rowSums(c(1-Data$A, Data$A)*Q) - Q.hat
-    #   )) < 1e-6
-    # )
+    Q <- cross_fitting(Data, target = "Y", folds = 5L,
+      learner = "regr.lm")
     
     # estimate the ATE using different methods, for each of the created weights
     ate_result <- tibble(
       weight_type = weight_types,
-      wgt = purrr::map(grid_min_exact, ~.$wgt),
-      propensity = purrr::map(grid_min_exact, ~.$propensity)
+      wgt = purrr::map(grid_min, ~.$wgt),
+      propensity = purrr::map(grid_min, ~.$propensity)
     )
     ate_result <- tidyr::expand_grid(est_method = est_method, ate_result)
     ate_result <- ate_result %>%

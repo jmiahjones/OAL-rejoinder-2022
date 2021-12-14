@@ -1,5 +1,4 @@
 require(glmnet)
-require(mlr3)
 
 # Helper function that translates a named weight type
 # into a numeric truncation value.
@@ -41,102 +40,6 @@ get_weight_class <- function(weight_type) {
       "weight type ", weight_type, " is undefined."
     ))
   return(trunc)
-}
-
-ATE_est <- function(Y, A, wgt, est_method, Q.hat=NULL, propensity=NULL, ...) {
-  if(est_method %in% c("TMLE", "AIPW")){
-    stopifnot(
-      !is.null(Q.hat), ncol(Q.hat)==2
-    )
-    if(est_method == "TMLE")
-      stopifnot(!is.null(propensity))
-  }
-  ate <- if(est_method == "TMLE") {
-    ATE_est_tmle(Y, A, wgt, Q.hat, propensity)
-  } else if(est_method == "IPW") {
-    ATE_est_IPW(Y, A, wgt)
-  } else if(est_method == "AIPW") {
-    ATE_est_AIPW(Y, A, wgt, Q.hat)
-  }
-  return(ate)
-}
-
-scale_01 <- function(Y, lims) {
-  (Y - lims[1]) / diff(lims)
-}
-
-inv_scale_01 <- function(Y, lims) {
-  Y * diff(lims) + lims[1]
-}
-
-ATE_est_tmle <- function(Y, A, wgt, Q.hat, propensity, trunc=0.01){
-  QAX <- A * Q.hat[,2] + (1-A) * Q.hat[,1]
-  H1 <- A
-  H0 <- 1-A
-
-  suppressWarnings(
-    tmle_fit <- (lm(Y ~ -1 + offset(QAX) + H0 + H1, weights = wgt))
-  )
-  tmle_coef <- coef(tmle_fit)
-  Q1star <- Q.hat[,2] + tmle_coef[2]
-  Q0star <- Q.hat[,1] + tmle_coef[1]
-  
-  mean(Q1star - Q0star)
-}
-
-ATE_est_IPW <- function(Y, A, wgt) {
-  wgt1 <- A * wgt
-  wgt0 <- (1-A) * wgt
-  res <- sum(wgt1 * Y) / sum(wgt1) - (sum(wgt0 * Y) / sum(wgt0))
-  return(res)
-}
-
-ATE_est_AIPW <- function(Y, A, wgt, Q.hat) {
-  # browser()
-  QAX <- A * Q.hat[,2] + (1-A) * Q.hat[,1]
-  eps.hat <- Y - QAX
-  influences <- (-(1-A) + A)*wgt*eps.hat + Q.hat[,2] - Q.hat[,1]
-  # browser()
-  mean(influences)
-}
-
-trunc_propensity <- function(propensity, trunc = 0.0) {
-  stopifnot(trunc >= 0.0)
-  if (trunc > 0.0) {
-    propensity <- pmax(propensity, trunc)
-    propensity <- pmin(propensity, 1 - trunc)
-  }
-  return(propensity)
-}
-
-create_weights <- function(propensity, A, type = c("trunc", "overlap"), ...) {
-  if(length(type) > 1) {
-    type = type[1]
-  }
-
-  weights <- switch(
-    tolower(substr(type, 1, 1)),
-    t = create_trunc_weights(
-      propensity=propensity, A=A, ...
-    ),
-    o = create_overlap_weights(
-      propensity=propensity, A=A, ...
-    )
-  )
-  return(weights)
-}
-
-create_trunc_weights <- function(propensity, A, trunc = 0.0, ...) {
-  propensity <- trunc_propensity(propensity, trunc)
-  weights <- rep(0, length(A))
-  weights[A == 1] <- 1 / propensity[A == 1]
-  weights[A == 0] <- 1 / (1 - propensity[A == 0])
-  return(weights)
-}
-
-create_overlap_weights <- function(propensity, A, ...) {
-  weights <- abs( A - propensity )
-  return(weights)
 }
 
 wAMD_function <- function(X, A, wgt, beta) {
