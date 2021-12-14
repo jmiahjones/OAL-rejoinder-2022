@@ -185,7 +185,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     ate_result <- tidyr::expand_grid(est_method = est_method, ate_result)
     ate_result <- ate_result %>%
       mutate(
-        ates = purrr::pmap(., ATE_est, Y = Data$Y, A = Data$A, 
+        ates = purrr::pmap_dbl(., ATE_est, Y = Data$Y, A = Data$A, 
           Q.hat = Q
         )
       )
