@@ -7,8 +7,8 @@ library(qs)
 
 base_params <- tribble(
   ~n,   ~p,   ~num_simulations,
-  200,  100,  100,
-  500,  200,  100
+  200,  100,  1000,
+  500,  200,  1000
 )
 
 vary_params <- tidyr::expand_grid(
@@ -28,4 +28,4 @@ results <- params %>%
     data = pmap(., simulate_oal)
   )
 
-qsave(results, file="./results/extensive_results.qs")
+qsave(results, file = "./results/extensive_results.qs")

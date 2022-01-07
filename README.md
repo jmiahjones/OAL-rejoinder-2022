@@ -10,9 +10,21 @@ Once the scenarios are created, it calls the `simulate_oal()` function.
 - `R/oal_funs.R`: This a big workhorse file, where the (nG)OAL logic and the grid search is described. 
 This deserves its own section below.
 
+- `R/ate_funs.R`: Another big workhorse file, where all the ATE estimation logic is contained.
+
 - `R/visualize.R`: This creates the ggplot2 plots for our viewing pleasure.
 
 - `tests/test-glmnet.R`: This is where a lot of the logic around scaling the lambda1 values is demonstrated. See below.
+
+## NEW: ATE Estimation Procedures
+
+The `R/ate_funs.R` file contains a lot of logic around estimating the ATE.
+First, it defines a big function `ATE_est()` that estimates the ATE using
+whatever method is passed in. It either does IPW, AIPW, or TMLE-based estimation.
+The TMLE code should roughly match what is used in the package.
+I also defined a `cross_fitting()` function that uses cross-fitting with `lm()` to
+get the outcome regression. The same estimates are used for all of the ATE
+estimators.
 
 ## OAL Fitting using Glmnet
 
