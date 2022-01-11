@@ -39,7 +39,9 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   } else {
     0
   }
-
+  message(paste("Arguments: ", n, p, num_simulations,
+                         rho, sig_x, scenario,
+                         sel_method, sep = " "))
   stopifnot(all(est_method %in% c("IPW", "AIPW", "TMLE")))
   
 
@@ -90,7 +92,8 @@ simulate_oal <- function(n, p, num_simulations = 100L,
 
   result <- foreach(
     sim_idx = seq.int(num_simulations),
-    .combine = dplyr::bind_rows
+    .combine = dplyr::bind_rows,
+    .errorhandling = "remove"
   ) %dopar% {
     
     set.seed(2021 + sim_idx)
@@ -132,9 +135,11 @@ simulate_oal <- function(n, p, num_simulations = 100L,
       lambda2_vals = lambda2_vals,
       weight_types = weight_types
     )
-
     # save coefficients, wamd metric, and hyperparameters
-    coefs <- purrr::map(grid_min, ~.$coefs)
+    coefs <- lapply(grid_min, function(x) x$coefs) %>% do.call(c, .)
+    sel_idx <- rep(seq.int(1+p), length(grid_min))
+    stopifnot(length(coefs) == length(sel_idx))
+    
     wamds <- purrr::map_dbl(grid_min, ~.$wamd)
     lambda2_chosens <- purrr::map_dbl(grid_min, ~.$lambda2)
     lambda1_chosens <- purrr::map_dbl(grid_min, ~.$lambda1)
@@ -150,8 +155,7 @@ simulate_oal <- function(n, p, num_simulations = 100L,
     
     Q <- cross_fitting(Data, target = "Y", folds = 5L,
       learner = "regr.lm")
-    
-    # estimate the ATE using different methods, for each of the created weights
+        # estimate the ATE using different methods, for each of the created weights
     ate_result <- tibble(
       weight_type = weight_types,
       wgt = purrr::map(grid_min, ~.$wgt),
@@ -164,6 +168,11 @@ simulate_oal <- function(n, p, num_simulations = 100L,
           Q.hat = Q
         )
       )
+    sel_result <- tibble(
+      coefs = coefs,
+      sel_idx = sel_idx
+    ) %>%
+    tidyr::nest(sel_result = c(coefs, sel_idx))
     
     # compress ate results down to length(weight_types) to
     # match the length of grid_min
@@ -180,15 +189,18 @@ simulate_oal <- function(n, p, num_simulations = 100L,
         trunc = truncs,
         wgt_class = wgt_classes,
         wamds = wamds,
-        sel_idx = purrr::map(coefs, ~ 1:(p+1)),
-        coefs = coefs
+        sel_result
       )),
       outcome_coefs = list(tibble(unpen = unpen)),
       prop_positivity = prop_positivity,
       positivity_tol = min(min(pA), min(1 - pA))
     )
 
-    if (verbose == 2 | (verbose == 1 & sim_idx %% 10 == 1)) {
+    if (
+      (verbose == 3) | 
+      (verbose == 2 & sim_idx %% 10 == 1) |
+      (verbose == 1 & sim_idx %% 100 == 1)
+    ) {
       print(sprintf("Completed simulation %i.", sim_idx))
     }
 
@@ -198,5 +210,8 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   return(result)
 }
 
-# bar <- simulate_oal(200, 100, 4, rho = 0.75, sig_x = 1, scenario = 1, sel_method = "OAL", verbose=2)
-# bar %>% unnest(method_results) %>% select(weight_type, trunc, wgt_class)
+# bar <- simulate_oal(200, 20, 4, rho = 0.75, sig_x = 1, scenario = 1, sel_method = "OAL", verbose=2)
+# bar %>% unnest(method_results) %>% dplyr::select(weight_type, trunc, wgt_class)
+# bar %>% unnest(method_results) %>% 
+#   filter(weight_type == "notrunc") %>%
+#   dplyr::select(sel_result) %>% unnest(sel_result)

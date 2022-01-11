@@ -132,7 +132,8 @@ grid_search_oal_fit <- function(gamma_vals, lambda_vec,
 
       if (
         inherits(this_oal, "try-error") ||
-          is.null(this_oal)
+          is.null(this_oal) ||
+          any(is.na(this_oal[[1]]))
       ) {
         message(sprintf(
           "Failed: lambda2=%.2f, lambda1=%.2f, gamma=%.2f",
