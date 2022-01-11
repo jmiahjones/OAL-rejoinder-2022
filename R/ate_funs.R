@@ -129,6 +129,8 @@ cross_fitting <- function(
     is.numeric(folds) && length(folds) == 1
   )
 
+  n <- nrow(Data)
+
   # create Q outcome regression matrix for TMLE
   Y_task <- mlr3::as_task_regr(Data, target = target)
   # using parametric model for simplicity
