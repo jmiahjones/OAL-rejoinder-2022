@@ -29,14 +29,18 @@ ate_perf <- results %>%
     ate_rmse = sqrt(mean(ates^2)),
     .groups = "drop"
   ) %>%
-  mutate(np = factor(sprintf("n/p = %i/%i", n, p)),
+  mutate(
+    np = factor(sprintf("n/p = %i/%i", n, p)),
     weight_type = factor(
       weight_type, levels = c("notrunc", "trunc@.01", "trunc@.05", "overlap"), 
-      labels = c("No Truncation", "Truncated @ .01", "Truncated @ .05", "Overlap")
+      labels = c("Inverse Propensity", "Truncated @ .01", "Truncated @ .05", "Overlap")
     ),
     est_method = factor(est_method, levels = c("IPW", "AIPW", "TMLE"))
   )
 
+# Truncation performs poorly and clutters the plot. Remove.
+ate_perf <- ate_perf %>%
+  filter(weight_type %in% c("Inverse Propensity", "Overlap"))
 
 png("./plots/extended_ate_bias.png", width = 700, height = 800)
 ate_perf %>% 
