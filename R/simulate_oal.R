@@ -13,7 +13,7 @@ library(mlr3)
 library(mlr3learners)
 library(data.table)
 lgr::get_logger("mlr3")$set_threshold("warn")
-plan(multicore, workers = 4)
+plan(multicore, workers = parallel::detectCores() - 1)
 # plan(sequential, split = TRUE)
 registerDoFuture()
 
@@ -210,8 +210,4 @@ simulate_oal <- function(n, p, num_simulations = 100L,
   return(result)
 }
 
-# bar <- simulate_oal(200, 20, 4, rho = 0.75, sig_x = 1, scenario = 1, sel_method = "OAL", verbose=2)
-# bar %>% unnest(method_results) %>% dplyr::select(weight_type, trunc, wgt_class)
-# bar %>% unnest(method_results) %>% 
-#   filter(weight_type == "notrunc") %>%
-#   dplyr::select(sel_result) %>% unnest(sel_result)
+# demo <- simulate_oal(200, 20, 4, rho = 0.75, sig_x = 1, scenario = 1, sel_method = "OAL", verbose=2)

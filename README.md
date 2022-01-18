@@ -14,17 +14,21 @@ This deserves its own section below.
 
 - `R/visualize.R`: This creates the ggplot2 plots for our viewing pleasure.
 
+- `tests/test-oal-utilities.R`: The ATE utility functions are tested to verify they are working as intended.
+
 - `tests/test-glmnet.R`: This is where a lot of the logic around scaling the lambda1 values is demonstrated. See below.
 
-## NEW: ATE Estimation Procedures
+## ATE Estimation Procedures
 
 The `R/ate_funs.R` file contains a lot of logic around estimating the ATE.
 First, it defines a big function `ATE_est()` that estimates the ATE using
 whatever method is passed in. It either does IPW, AIPW, or TMLE-based estimation.
 The TMLE code should roughly match what is used in the package.
-I also defined a `cross_fitting()` function that uses cross-fitting with `lm()` to
-get the outcome regression. The same estimates are used for all of the ATE
-estimators.
+
+Other utility functions involve the addition of truncation in the creation of IPW weights, and the creation of the overlap weights. All of the ATE estimation methods-IPW, AIPW, and TMLE-involve a generic weight function which would usually be used for IPW weights. By making this more general, it is simple to compare the use of truncation or overlap weights across the different estimators.
+
+Finally, a `cross_fitting()` function is also defined that uses cross-fitting with `lm()` to get the outcome regression. The same estimates are used for all of the ATE
+estimators. This is based on the `mlr3` package for machine learning, so more complex estimators can be specified by passing in a `mlr3`-compatible name in the `learner` argument.
 
 ## OAL Fitting using Glmnet
 
@@ -56,10 +60,10 @@ The first thing you will need to do, if you do not have renv installed, is run `
 renv::restore()
 ```
 
-This will instruct renv to install all the packages at the versions recorded in the `renv.lock` file.
+This will instruct renv to install all the packages at the versions recorded in the `renv.lock` file. It may take several minutes to finish this step.
 
 If you are on a UNIX-like system with GNU Make, you can simply use the commands in the Makefile to run the code.
-To run all the simulations, you may run `make` or `make run_all_sims`.
+To run all the simulations, you may run `make` or `make`.
 To create the plots afterwards, you may run `make plot`.
 Otherwise, you may simply run the `./R/call_sims.R` and `./R/visualize.R` scripts, respectively.
 
