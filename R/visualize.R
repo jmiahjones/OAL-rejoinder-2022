@@ -115,9 +115,11 @@ results %>%
   ) %>%
   ggplot(aes(x = sig_x, y = prop_positivity)) +
   geom_line(aes(linetype = rho)) +
-  facet_grid(~np) +
+  facet_grid(np ~.) +
   theme_bw() +
-  theme(text = element_text(size=20)) +
+  theme(text = element_text(size = 26),
+        legend.position = "bottom",
+        legend.justification = "center") +
   labs(
     title = paste0("Positivity Violations vs. ", sig_x_str),
     y = "Pr{ min(\u03c0, 1-\u03c0) < .05}",
@@ -154,13 +156,14 @@ ate_perf %>%
   ) +
   scale_x_continuous(breaks = seq(.2, 1, by = .2)) +
   # facet_grid(rho ~ np) +
-  facet_grid(~ np) +
+  facet_grid(np ~.) +
   theme_bw() +
-  theme(text = element_text(size = 20),
-        legend.position = "bottom") +
+  theme(text = element_text(size = 26),
+        legend.position = "bottom",
+        legend.justification = "center") +
   labs(
     title = paste0("Bias of the Standard IPW Estimator vs. ", sig_x_str),
-    subtitle = "\u03c1 = 0.75, n/p = 200/100",
+    subtitle = "\u03c1 = 0.75",
     y = "Bias",
     x = sig_x_str, shape = "Method", color = "Method"
   )
